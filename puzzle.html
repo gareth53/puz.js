@@ -17,7 +17,7 @@
 	border:0px solid green;
 	width:90px;
 	height:90px;
-
+	text-indent:-9999em;
 	background:url(http://4.bp.blogspot.com/-3F84Y9GQkwI/TzaASbnKohI/AAAAAAAASNQ/KAq0xKRAdqM/s1600/zooey_deschanel.jpg) no-repeat 0 0;
 /*	background:url(http://images.wikia.com/stephenking/images/f/ff/Clown.png) no-repeat 0 0;
 */
@@ -55,6 +55,7 @@ var puz = {
 
 	/* in game vars */
 	board: [],
+	tiles: [undefined],
 	space: [0, 0],
 	board_active: false,
 	start_time:0,
@@ -99,6 +100,7 @@ var puz = {
 		puz.last_tile_moved = 0
 		document.getElementById('moves').innerHTML = '0';
 		document.getElementById('time').innerHTML = '0';
+		document.getElementById('button').innerHTML = puz.btn_start;
 	},
 	
 	start_game:function() {
@@ -117,23 +119,58 @@ var puz = {
 	
 	build_board: function() {
 		var tiles = (puz.board_w * puz.board_h) - 1,
-			h = '',
-			top = 0,
-			left = 0,
-			pos = "";
+			h = "";
 		puz.board_el = document.getElementById('puzzle');
 		for (var i=1; i<=tiles; i++) {
-			top = Math.floor(i/(puz.board_w+.1));
-			left = ((i-1) % puz.board_w);
-			var top_pos = top*puz.tile_size + (puz.tile_spacing * top),
-				left_pos = left*puz.tile_size + (puz.tile_spacing * left)
-			h += '<a href="#shift" id="tile'+i+'" \
+			tile = puz.create_tile(i);
+			puz.board_el.appendChild(tile);
+			puz.tiles.push(tile)
+		}
+		// add the click events
+		// return puz.slide_click(this);
+//		puz.board_el.innerHTML = h;
+	},
+
+	create_tile: function(i) {
+		var top = 0,
+			left = 0,
+			tile;
+		top = Math.floor(i/(puz.board_w+.1));
+		left = ((i-1) % puz.board_w);
+		var top_pos = top*puz.tile_size + (puz.tile_spacing * top),
+			left_pos = left*puz.tile_size + (puz.tile_spacing * left);
+
+		tile = document.createElement('a');
+		text = document.createTextNode('Tile ' + i);
+
+		id = document.createAttribute('id');
+		id.nodeValue =  'tile' + i;
+
+		href = document.createAttribute('href');
+		href.nodeValue =  '#shift';
+
+		style = document.createAttribute('style')
+		style.nodeValue = 'top:'+ top_pos +'px;\
+					left:'+left_pos+'px;\
+					background-position: -'+left_pos+'px -'+top_pos+'px';
+
+
+		tile.setAttributeNode(id);
+		tile.setAttributeNode(href);
+		tile.setAttributeNode(style);
+		tile.appendChild(text);
+		tile.addEventListener('click', function(e) {
+			puz.slide_click(this);
+			e.preventDefault();
+		});
+		return tile;
+/*
+		return '<a href="#shift" id="tile'+i+'" \
 					style="top:'+ top_pos +'px;\
 					left:'+left_pos+'px;\
 					background-position: -'+left_pos+'px -'+top_pos+'px\
 					" ' + puz.slide_event + '="return puz.slide_click(this);"><span>'+i+'</span></a>';
-		}	
-		puz.board_el.innerHTML = h;
+*/
 	},
 
 	build_board_map: function() {
@@ -335,7 +372,7 @@ window.addEventListener('load', function() {
 </head>
 <body>
 
-<p id="button"><a href="#start" onclick="puz.start_game(); return false">Start Game</a></li></p>
+<p id="button"><a href="#start" onclick="puz.start_game(); return false">Start Game</a></p>
 
 <ul>
 	<li>Time <span id="time">0</span></li>
