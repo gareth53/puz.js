@@ -2,7 +2,7 @@
 <html>
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
-	<title>untitled</title>
+	<title>Puzzle Game Demo</title>
 <style>
 
 #puzzle {
@@ -17,7 +17,7 @@
 	border:0px solid green;
 	width:90px;
 	height:90px;
-	text-indent:-9999em;
+
 	background:url(http://4.bp.blogspot.com/-3F84Y9GQkwI/TzaASbnKohI/AAAAAAAASNQ/KAq0xKRAdqM/s1600/zooey_deschanel.jpg) no-repeat 0 0;
 /*	background:url(http://images.wikia.com/stephenking/images/f/ff/Clown.png) no-repeat 0 0;
 */
@@ -28,8 +28,8 @@
 */	text-decoration:none;
 }
 #puzzle a span {
-display:none;
-/*
+/*display:none;*/
+
 	position:absolute;
 	top:3px;
 	left:3px;
@@ -37,7 +37,6 @@ display:none;
 	padding:2px;
 	color:#f00;
 	background-color:#fff;
-*/
 }
 
 </style>
@@ -55,8 +54,8 @@ var puz = {
 
 	/* in game vars */
 	board: [],
-	tiles: [undefined],
 	space: [0, 0],
+	game_in_progress: false,
 	board_active: false,
 	start_time:0,
 	end_time:0,
@@ -65,6 +64,9 @@ var puz = {
 	
 	btn_start: '<a href="#start" onclick="puz.start_game(); return false">Start Game</a>',
 	btn_reset: '<a href="#reset" onclick="puz.init(); return false">Reset</a>',
+	
+	/* transition settings */
+	transition: false,
 	
 	styles: {
 		'.puzzle' : {
@@ -90,12 +92,15 @@ var puz = {
 		puz.reset_game();
 		puz.build_board_map();
 		puz.build_board();
+		puz.transition_dist = puz.tile_size + puz.tile_spacing;
+		puz.transition = puz.transition_vars()
 	},
 
 	reset_game: function() {
 		puz.board_active = false;
 		puz.start_time = 0;
 		puz.end_time = 0;
+		puz.game_in_progress = false;
 		puz.moves = 0;
 		puz.last_tile_moved = 0
 		document.getElementById('moves').innerHTML = '0';
@@ -113,64 +118,30 @@ var puz = {
 	go: function () {
 		document.getElementById('button').innerHTML = puz.btn_reset;
 		puz.start_time = new Date();
+		puz.game_in_progress = true;
 		puz.board_active = true;
 		puz.time_disp();
 	},
 	
 	build_board: function() {
 		var tiles = (puz.board_w * puz.board_h) - 1,
-			h = "";
+			h = '',
+			top = 0,
+			left = 0,
+			pos = "";
 		puz.board_el = document.getElementById('puzzle');
 		for (var i=1; i<=tiles; i++) {
-			tile = puz.create_tile(i);
-			puz.board_el.appendChild(tile);
-			puz.tiles.push(tile)
-		}
-		// add the click events
-		// return puz.slide_click(this);
-//		puz.board_el.innerHTML = h;
-	},
-
-	create_tile: function(i) {
-		var top = 0,
-			left = 0,
-			tile;
-		top = Math.floor(i/(puz.board_w+.1));
-		left = ((i-1) % puz.board_w);
-		var top_pos = top*puz.tile_size + (puz.tile_spacing * top),
-			left_pos = left*puz.tile_size + (puz.tile_spacing * left);
-
-		tile = document.createElement('a');
-		text = document.createTextNode('Tile ' + i);
-
-		id = document.createAttribute('id');
-		id.nodeValue =  'tile' + i;
-
-		href = document.createAttribute('href');
-		href.nodeValue =  '#shift';
-
-		style = document.createAttribute('style')
-		style.nodeValue = 'top:'+ top_pos +'px;\
-					left:'+left_pos+'px;\
-					background-position: -'+left_pos+'px -'+top_pos+'px';
-
-
-		tile.setAttributeNode(id);
-		tile.setAttributeNode(href);
-		tile.setAttributeNode(style);
-		tile.appendChild(text);
-		tile.addEventListener('click', function(e) {
-			puz.slide_click(this);
-			e.preventDefault();
-		});
-		return tile;
-/*
-		return '<a href="#shift" id="tile'+i+'" \
+			top = Math.floor(i/(puz.board_w+.1));
+			left = ((i-1) % puz.board_w);
+			var top_pos = top*puz.tile_size + (puz.tile_spacing * top),
+				left_pos = left*puz.tile_size + (puz.tile_spacing * left)
+			h += '<a href="#shift" id="tile'+i+'" \
 					style="top:'+ top_pos +'px;\
 					left:'+left_pos+'px;\
 					background-position: -'+left_pos+'px -'+top_pos+'px\
 					" ' + puz.slide_event + '="return puz.slide_click(this);"><span>'+i+'</span></a>';
-*/
+		}	
+		puz.board_el.innerHTML = h;
 	},
 
 	build_board_map: function() {
@@ -195,7 +166,7 @@ var puz = {
 			moves tiles randomly until the board is mixed
 		*/
 		var moves = 0,
-			total_time = (puz.board_w * puz.board_h * 4 * puz.slide_delay),
+			total_time = 0,//(puz.board_w * puz.board_h * 4 * puz.slide_delay),
 			slide_delay = puz.slide_delay;
 			slide_tile = function() {
 				var tiles = puz.movable_tiles();
@@ -205,13 +176,44 @@ var puz = {
 				} while (tile_num == puz.last_tile_moved)
 				var to = puz.slide_invoke(document.getElementById("tile" + tile_num))
 			}
-		if (total_time > 20000) slide_delay = 1;
+//		if (total_time > 20000) puz.active_slide_delay = 1;
+//		while (moves < 1) {
 		while (moves < (puz.board_w * puz.board_h * 4)) {
 			var delay = (slide_delay * moves);
 			setTimeout(slide_tile, delay);
 			moves++;
 		}
-		puz.cback = setTimeout(callback, delay + 1);
+		puz.cback = setTimeout(callback, delay + 1000);
+	},
+
+	print_debug: function() {
+		puz.print_board_map();
+		puz.print_space();
+		puz.print_movable_tiles();
+	},
+
+	print_space: function() {
+		document.getElementById("debug_space").innerHTML = puz.space.toString();
+	},
+
+	print_movable_tiles: function() {
+		document.getElementById("debug_movable").innerHTML = puz.movable_tiles().toString();
+	},
+
+	print_board_map: function() {
+		var h = ""
+		var two_digits = function(digit) {
+			if (digit < 10) return "0" + digit;
+			return digit;
+		}
+		for (var row=0,len =puz.board.length ; row<len; row++) {
+			for (var col=0, lim=puz.board[row].length; col<lim; col++) {
+				h += two_digits(puz.board[row][col]) + " "
+			}
+			h += "<br />"
+		}
+		if (!puz.debug_el) puz.debug_el = document.getElementById("debug");
+		puz.debug_el.innerHTML = h;
 	},
 	
 	movable_tiles: function (dir) {
@@ -251,12 +253,11 @@ var puz = {
 		var curr = el.id;
 		var curr_num = parseInt(curr.replace('tile',''));
 		// compare the slide pos to the space pos.
-		// which way can we slide?
-		// up, down, left or right?
+		// which way can we slide? up, down, left or right?
 		var coods = puz.find_tile(curr_num);
-		// is x-axis the same and in range?
 		var x_diff = puz.space[0] - coods[0],
 			y_diff = puz.space[1] - coods[1];
+		// one axis value has to be the same and the other within 1
 		if (((Math.abs(x_diff) == 1) && (y_diff == 0)) || ((Math.abs(y_diff) == 1) && (x_diff == 0))) {
 			puz.slide_start(el, x_diff, y_diff);
 			return true;
@@ -266,28 +267,36 @@ var puz = {
 	
 	slide_start: function(el, x_dir, y_dir) {
 		puz.board_active = false;
-		var x_trans = (x_dir * puz.tile_size) + (x_dir * puz.tile_spacing),
-			y_trans = (y_dir * puz.tile_size) + (y_dir * puz.tile_spacing);
+		puz.last_tile_moved = el;
+		var x_st = parseInt(el.style.left),
+			y_st = parseInt(el.style.top);
+		if (puz.transition) {
+			var transitionEnd = function() {
+				// cancel the transition stuff & then call puz.slide()
+				el = puz.last_tile_moved;
+				el.style[puz.transition.property + 'Duration'] = "0";
+				el.style[puz.transition.transform] = "translate3d(0, 0, 0)";
+				puz.slide(el, x_st, y_st, x_dir, y_dir);
+			}
 /*
-el.addEventListener('webkitTransitionEnd', function() {
-		el.style.left = parseInt(el.style.left) + x_trans + "px";
-		el.style.top =  parseInt(el.style.top)  + y_trans + "px";
-		el.style.webkitTransition = "top 0";
-		el.style.webkitTransitionDuration = "0";
-el.removeEventListener('webkitTransitionEnd')
-		puz.slide_finish(el, x_dir, y_dir);	
+NOTE: not using event Listeners here because they can't be removed reliably x-browser :(
+August 2012
+*/
+			var delay = Math.floor(puz.slide_delay * .75);
+			if (puz.cleanUp) clearTimeout(puz.cleanUp);
+			puz.cleanUp = setTimeout(transitionEnd, delay + 10)
+			el.style[puz.transition.property + 'Duration'] =  delay + "ms";
+			el.style[puz.transition.transform] = "translate3d(" + (x_dir * puz.transition_dist) + "px, " + ( y_dir * puz.transition_dist) + "px, 0)";
+		}
+		else {
+			puz.slide(el, x_st, y_st, x_dir, y_dir);
+		}
+	},
 
-})
-
-el.style.webkitTransitionDuration = puz.slide_delay + "ms";
-//el.style.webkitTransform = "translate3d(0,0,0)";
-el.style.webkitTransition = "top " + x_trans +  "px";
-
-/**/
-		el.style.left = parseInt(el.style.left) + x_trans + "px";
-		el.style.top =  parseInt(el.style.top)  + y_trans + "px";
+	slide: function(el, x_st, y_st, x_dir, y_dir) {
+		el.style.left = x_st + (x_dir * puz.transition_dist) + "px";
+		el.style.top =  y_st  + (y_dir * puz.transition_dist) + "px";
 		puz.slide_finish(el, x_dir, y_dir);
-
 	},
 	
 	slide_finish: function(el, x_dir, y_dir) {
@@ -305,6 +314,7 @@ el.style.webkitTransition = "top " + x_trans +  "px";
 			if (!puz.check_game_state()) puz.board_active = true;
 			else puz.game_complete();
 		}
+//		puz.print_debug();
 	},
 
 	check_game_state: function() {
@@ -340,7 +350,7 @@ el.style.webkitTransition = "top " + x_trans +  "px";
 	},
 	
 	time_disp: function() {
-		if (puz.board_active) {
+		if (puz.game_in_progress) {
 			document.getElementById('time').innerHTML = puz.time_format(puz.time_diff(puz.start_time, new Date()))
 			puz.clock = setTimeout(puz.time_disp, 49);
 		}
@@ -354,7 +364,31 @@ el.style.webkitTransition = "top " + x_trans +  "px";
 		puz.end_time = new Date();
 		alert("You did it!\nYou took " + puz.moves + " moves.\nTime taken " + puz.time_format(puz.time_diff(puz.start_time, puz.end_time)));
 		document.getElementById('button').innerHTML = puz.btn_start;
+		puz.game_in_progress = false;
 		puz.board_active = false;
+	},
+	
+	transition_vars: function() {
+		var el = document.createElement('div'),
+			poss = [
+			["transition", 'transition', 'transitionend', "transform" ],
+			["WebkitTransition", '-webkit-transition', 'webkitTransitionEnd', "webkitTransform"],
+			["MSTransition", '-ms-transition', 'MSTransitionEnd', "MSTransform" ],
+			["MozTransition", '-moz-transition', 'transitionend', "MozTransform" ],
+			["OTransition", '-o-transition', 'OTransitionEnd', "OTransform" ]
+		];
+		for (var p in poss) {
+			if (poss[p][0] in el.style) {
+				return {
+					'property': poss[p][0],
+					'cssName': poss[p][1],
+					'event': poss[p][2],
+					'transform': poss[p][3] 
+				}
+				break;
+			}
+		}
+		return false;
 	}
 };
 
@@ -372,7 +406,7 @@ window.addEventListener('load', function() {
 </head>
 <body>
 
-<p id="button"><a href="#start" onclick="puz.start_game(); return false">Start Game</a></p>
+<p id="button"><a href="#start" onclick="puz.start_game(); return false">Start Game</a></li></p>
 
 <ul>
 	<li>Time <span id="time">0</span></li>
@@ -382,6 +416,13 @@ window.addEventListener('load', function() {
 <p id="puzzle">
 
 </p>
+
+<div id="debug_wrap" style="font-family:courier;position:absolute;right:1em; top:1em">
+	<div id="debug"></div>
+	<div>Space: <span id="debug_space"></span></div>
+	<div>Movable: <span id="debug_movable"></span></div>
+</div>
+
 
 </body>
 </html>
