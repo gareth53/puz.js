@@ -3,56 +3,96 @@
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<title>Puzzle Game Demo</title>
-<style>
 
-#puzzle {
-	position:relative;
-	padding:20px;
-	width:200px;
-	height:200px;
-}
-#puzzle a {
-	position:absolute;
-	display:block;
-	border:0px solid green;
-	width:90px;
-	height:90px;
+<!--
 
-	background:url(http://4.bp.blogspot.com/-3F84Y9GQkwI/TzaASbnKohI/AAAAAAAASNQ/KAq0xKRAdqM/s1600/zooey_deschanel.jpg) no-repeat 0 0;
-/*	background:url(http://images.wikia.com/stephenking/images/f/ff/Clown.png) no-repeat 0 0;
+<script charset="utf-8" src="http://widgets.twimg.com/j/2/widget.js"></script>
+<script>
+new TWTR.Widget({
+  version: 2,
+  type: 'profile',
+  rpp: 4,
+  interval: 30000,
+  width: 250,
+  height: 300,
+  theme: {
+    shell: {
+      background: '#333333',
+      color: '#ffffff'
+    },
+    tweets: {
+      background: '#000000',
+      color: '#ffffff',
+      links: '#4aed05'
+    }
+  },
+  features: {
+    scrollbar: false,
+    loop: false,
+    live: false,
+    behavior: 'all'
+  }
+}).render().setUser('gareth53').start();
+</script>
+
+
+-->
+
+<script>
+
+/*
+
+TODO
+
+- BASE STYLES
+- WRITE STYLES IN WITHOUT <STYLE> TAG
+- mix board without transitions option
+- option to start with a mixed board
+- DOCSTRINGS
+- REMOVE DEBUG
+- write tests
+- make into a contructor
+- configurating when instantiating
+	- id
+	- start mixed
+	- image
+	- image size
+	- tile size
+	- tile spacing
+	- board_width
+	- board_height
+	- slide speed
+- USE DYNAMIC ELEMENT IDS?
+- test transitions in MSIE
+- test x-browser
+- test in touch devices
+- documentation
+- high scores (using LocalStorage)
+	- fewest moves (date)
+	- fastest time (date)
+
 */
 
-/*	background:url(http://3.bp.blogspot.com/_SPYL8UC1UCY/TJ5k7SBhwwI/AAAAAAAAD8Q/XEYiYGjGKQw/s1600/Harold+Lloyd.jpg) no-repeat 0 0;
-	background-size:800px 800px;
 
-*/	text-decoration:none;
-}
-#puzzle a span {
-/*display:none;*/
-
-	position:absolute;
-	top:3px;
-	left:3px;
-	display:block;
-	padding:2px;
-	color:#f00;
-	background-color:#fff;
-}
-
-</style>
-<script>
 
 var puz = {
 
 	/* config */
+	board_wrapper_id: "demo_puzzle",
 	board_w: 4,
 	board_h: 4,
 	tile_size: 90,
 	tile_spacing:4,
 	slide_delay: 100,
-	slide_event: 'onclick',
+	// CSS specifics
+	image:"",
+	background_image: "",
+	background_size: "",
 
 	/* in game vars */
+	slide_event: 'onclick',
+	board_el: undefined,
+	board_wrapper_el: undefined,
 	board: [],
 	space: [0, 0],
 	game_in_progress: false,
@@ -68,27 +108,12 @@ var puz = {
 	/* transition settings */
 	transition: false,
 	
-	styles: {
-		'.puzzle' : {
-			'position': 'relative'
-		},
-		'.puzzle a' : {
-			'position': 'absolute',
-			'display': 'block',
-			'width': '90px',
-			'height': '90px',
-			'background-image': 'url(http://3.bp.blogspot.com/_SPYL8UC1UCY/TJ5k7SBhwwI/AAAAAAAAD8Q/XEYiYGjGKQw/s1600/Harold+Lloyd.jpg)',
-			'background-repeat': 'no-repeat',
-//			'background-size': '400px 400px';
-			'text-decoration': 'none',
-		},
-		'.puzzle a span' : {
-			'display': 'none'
-		}
-	},
-	
 	init: function() {
 		if (document.ontouchstart) puz.slide_event = "ontouchstart";
+		puz.board_wrapper_el = document.getElementById(puz.board_wrapper_id);
+		puz.generate_dom_ids();
+		puz.build_game_base();
+		puz.generate_styles();
 		puz.reset_game();
 		puz.build_board_map();
 		puz.build_board();
@@ -96,27 +121,97 @@ var puz = {
 		puz.transition = puz.transition_vars()
 	},
 
+	build_game_base: function() {
+		/*
+		thr base markup surrounding the puzzle
+		*/
+		puz.board_wrapper_el.innerHTML ='\
+			<p class="button" id="' + puz.id_btn + '"></p>\
+			<ul>\
+				<li>Moves <span id="' + puz.id_moves + '">0</span></li>\
+				<li>Time <span id="' + puz.id_time + '">0</span></li>\
+			</ul>\
+			<p id="' + puz.id_puzzle + '"></p>';
+	},
+
+	generate_dom_ids: function() {
+		/*
+		DOM element IDs
+		*/
+		puz.id_btn    = puz.board_wrapper_id + "_btn";
+		puz.id_time   = puz.board_wrapper_id + "_time";
+		puz.id_moves  = puz.board_wrapper_id + "_moves";
+		puz.id_puzzle = puz.board_wrapper_id + "_puzzle";
+		puz.id_tile = puz.board_wrapper_id + "_tile";
+	},
+
+	generate_styles: function() {
+		/*
+		writes styles into the host document
+		*/
+		var selectors = {
+				selector1 : '#' + puz.id_puzzle,
+				selector2 : '#' + puz.id_puzzle + ' a',
+				selector3 : '#' + puz.id_puzzle + ' a span'
+			};
+			styles = {
+				selector1 : {
+					'position': 'relative',
+					'width': (puz.board_w * puz.tile_size) + (puz.tile_spacing * (puz.board_w - 1)) + "px", 
+					'height': (puz.board_h * puz.tile_size) + (puz.tile_spacing * (puz.board_h - 1)) + "px" 
+				},
+				selector2 : {
+					'position': 'absolute',
+					'display': 'block',
+					'width': '90px',
+					'height': '90px',
+					'background-image': 'url(http://3.bp.blogspot.com/_SPYL8UC1UCY/TJ5k7SBhwwI/AAAAAAAAD8Q/XEYiYGjGKQw/s1600/Harold+Lloyd.jpg)',
+					'background-repeat': 'no-repeat',
+					'background-size': '400px 400px',
+					'text-decoration': 'none',
+				},
+				selector3 : {
+					'display': 'none'
+				}
+			};
+		var css = "";
+		for (style in styles) {
+			css += "\n" + selectors[style] + " {";
+			for (def in styles[style]) {
+				css += "\n\t" + def + ":" + styles[style][def] + ";"
+			}
+			css += "\n}";
+		}
+		var styleTag = document.createElement('style'),
+			styleDefs = document.createTextNode(css);
+		styleTag.appendChild(styleDefs);
+		puz.board_wrapper_el.appendChild(styleTag);
+	},
+
 	reset_game: function() {
 		puz.board_active = false;
 		puz.start_time = 0;
 		puz.end_time = 0;
+		puz.moves = 0;
 		puz.game_in_progress = false;
 		puz.moves = 0;
-		puz.last_tile_moved = 0
-		document.getElementById('moves').innerHTML = '0';
-		document.getElementById('time').innerHTML = '0';
-		document.getElementById('button').innerHTML = puz.btn_start;
+		puz.last_tile_moved = 0;
+		document.getElementById(puz.id_moves).innerHTML = '0';
+		document.getElementById(puz.id_time).innerHTML = '0';
+		document.getElementById(puz.id_btn).innerHTML = puz.btn_start;
 	},
 	
 	start_game:function() {
 		puz.reset_game()
-		puz.moves = 0;
-		document.getElementById('button').innerHTML = "&nbsp;"
+		document.getElementById(puz.id_btn).innerHTML = "&nbsp;"
 		puz.mix_board(puz.go);
 	},
 	
 	go: function () {
-		document.getElementById('button').innerHTML = puz.btn_reset;
+		/*
+		function that is fred by the callback once the board has been mixed
+		*/
+		document.getElementById(puz.id_btn).innerHTML = puz.btn_reset;
 		puz.start_time = new Date();
 		puz.game_in_progress = true;
 		puz.board_active = true;
@@ -124,18 +219,21 @@ var puz = {
 	},
 	
 	build_board: function() {
+		/*
+		adds tiles to the board
+		*/
 		var tiles = (puz.board_w * puz.board_h) - 1,
 			h = '',
 			top = 0,
 			left = 0,
 			pos = "";
-		puz.board_el = document.getElementById('puzzle');
+			puz.board_el = document.getElementById(puz.id_puzzle);
 		for (var i=1; i<=tiles; i++) {
 			top = Math.floor(i/(puz.board_w+.1));
 			left = ((i-1) % puz.board_w);
 			var top_pos = top*puz.tile_size + (puz.tile_spacing * top),
 				left_pos = left*puz.tile_size + (puz.tile_spacing * left)
-			h += '<a href="#shift" id="tile'+i+'" \
+			h += '<a href="#shift" id="' + puz.id_tile + i + '" \
 					style="top:'+ top_pos +'px;\
 					left:'+left_pos+'px;\
 					background-position: -'+left_pos+'px -'+top_pos+'px\
@@ -174,10 +272,9 @@ var puz = {
 					var rnd = parseInt(tiles.length * Math.random());
 					tile_num = tiles.splice(rnd, 1)
 				} while (tile_num == puz.last_tile_moved)
-				var to = puz.slide_invoke(document.getElementById("tile" + tile_num))
+				var to = puz.slide_invoke(document.getElementById(puz.id_tile + tile_num))
 			}
 //		if (total_time > 20000) puz.active_slide_delay = 1;
-//		while (moves < 1) {
 		while (moves < (puz.board_w * puz.board_h * 4)) {
 			var delay = (slide_delay * moves);
 			setTimeout(slide_tile, delay);
@@ -185,38 +282,11 @@ var puz = {
 		}
 		puz.cback = setTimeout(callback, delay + 1000);
 	},
-
-	print_debug: function() {
-		puz.print_board_map();
-		puz.print_space();
-		puz.print_movable_tiles();
-	},
-
-	print_space: function() {
-		document.getElementById("debug_space").innerHTML = puz.space.toString();
-	},
-
-	print_movable_tiles: function() {
-		document.getElementById("debug_movable").innerHTML = puz.movable_tiles().toString();
-	},
-
-	print_board_map: function() {
-		var h = ""
-		var two_digits = function(digit) {
-			if (digit < 10) return "0" + digit;
-			return digit;
-		}
-		for (var row=0,len =puz.board.length ; row<len; row++) {
-			for (var col=0, lim=puz.board[row].length; col<lim; col++) {
-				h += two_digits(puz.board[row][col]) + " "
-			}
-			h += "<br />"
-		}
-		if (!puz.debug_el) puz.debug_el = document.getElementById("debug");
-		puz.debug_el.innerHTML = h;
-	},
 	
 	movable_tiles: function (dir) {
+		/*
+		returns a list of which tiles can be moved
+		*/
 		var tiles = [],
 			x = puz.space[0],
 			y = puz.space[1];
@@ -228,6 +298,10 @@ var puz = {
 	},
 	
 	slide_click: function(el) {
+		/*
+		function that is attached to the UI event of a tile
+		ensures tiles can only be manually moved when the game allows it
+		*/
 		if (puz.board_active) {
 			puz.slide_invoke(el);
 		}
@@ -250,8 +324,11 @@ var puz = {
 	},
 
 	slide_invoke:function(el) {
+		/*
+		checks whether any given slide can be moved
+		*/
 		var curr = el.id;
-		var curr_num = parseInt(curr.replace('tile',''));
+		var curr_num = parseInt(curr.replace(puz.id_tile,''));
 		// compare the slide pos to the space pos.
 		// which way can we slide? up, down, left or right?
 		var coods = puz.find_tile(curr_num);
@@ -266,6 +343,10 @@ var puz = {
 	},
 	
 	slide_start: function(el, x_dir, y_dir) {
+		/*
+		disables the board for further clicks
+		moves the tile, with a transition if possible
+		*/
 		puz.board_active = false;
 		puz.last_tile_moved = el;
 		var x_st = parseInt(el.style.left),
@@ -278,15 +359,12 @@ var puz = {
 				el.style[puz.transition.transform] = "translate3d(0, 0, 0)";
 				puz.slide(el, x_st, y_st, x_dir, y_dir);
 			}
-/*
-NOTE: not using event Listeners here because they can't be removed reliably x-browser :(
-August 2012
-*/
+			// NOTE: not using event Listeners here because they can't be removed reliably x-browser :( August 2012
 			var delay = Math.floor(puz.slide_delay * .75);
 			if (puz.cleanUp) clearTimeout(puz.cleanUp);
 			puz.cleanUp = setTimeout(transitionEnd, delay + 10)
 			el.style[puz.transition.property + 'Duration'] =  delay + "ms";
-			el.style[puz.transition.transform] = "translate3d(" + (x_dir * puz.transition_dist) + "px, " + ( y_dir * puz.transition_dist) + "px, 0)";
+			el.style[puz.transition.transform] = "translate3d(" + (x_dir * puz.transition_dist) + "px, " + (y_dir * puz.transition_dist) + "px, 0)";
 		}
 		else {
 			puz.slide(el, x_st, y_st, x_dir, y_dir);
@@ -294,30 +372,35 @@ August 2012
 	},
 
 	slide: function(el, x_st, y_st, x_dir, y_dir) {
+		/*
+		moves a tile element in the specified direction from a specified starting point
+		*/
 		el.style.left = x_st + (x_dir * puz.transition_dist) + "px";
 		el.style.top =  y_st  + (y_dir * puz.transition_dist) + "px";
 		puz.slide_finish(el, x_dir, y_dir);
 	},
 	
 	slide_finish: function(el, x_dir, y_dir) {
+		/*
+		once the UI has been animated, update the stored game state variables
+		check to see if the puzzle has been completed
+		*/
 		// update board_game
-		var tile_num = parseInt(el.id.replace('tile', ''));
+		var tile_num = parseInt(el.id.replace(puz.id_tile, ''));
 		puz.board[puz.space[1]][puz.space[0]] = tile_num;
 		puz.last_tile_moved = tile_num;
 		// change the stored 'space' co-ods
-		puz.space[0] = puz.space[0] - x_dir;
-		puz.space[1] = puz.space[1] - y_dir;
+		puz.space = [puz.space[0] - x_dir, puz.space[1] - y_dir];
 		puz.board[puz.space[1]][puz.space[0]] = 0;
-		if (puz.start_time) {
+		if (puz.game_in_progress) {
 			puz.moves++;
-			puz.display_moves();
-			if (!puz.check_game_state()) puz.board_active = true;
+			document.getElementById(puz.id_moves).innerHTML = puz.moves;
+			if (!puz.check_game_complete()) puz.board_active = true;
 			else puz.game_complete();
 		}
-//		puz.print_debug();
 	},
 
-	check_game_state: function() {
+	check_game_complete: function() {
 		/*
 		check the board map to see if the puzzle has been solved
 		*/
@@ -330,15 +413,20 @@ August 2012
 		}
 		return true
 	},
-
 	
 	time_diff: function(start, end) {
+		/*
+		returns difference in two times, in milliseconds
+		*/
 		return end.getTime() - start.getTime();
 	},
 
 	time_format: function(ms) {
+		/*
+		formats a value in milliseconds into a human-readable time
+		*/
 		var hrs = Math.floor(ms / (1000 * 60 * 60));
-		var rmndr = ms - (1000 * 60 * 60 * hrs);
+	 	var rmndr = ms - (1000 * 60 * 60 * hrs);
 		var mins = Math.floor(rmndr / (60 * 1000))
 		rmndr = rmndr - (60 * 1000 * mins)
 		var secs = Math.floor(rmndr/1000);
@@ -350,25 +438,31 @@ August 2012
 	},
 	
 	time_disp: function() {
+		/*
+		updates the timer
+		*/
 		if (puz.game_in_progress) {
-			document.getElementById('time').innerHTML = puz.time_format(puz.time_diff(puz.start_time, new Date()))
+			document.getElementById(puz.id_time).innerHTML = puz.time_format(puz.time_diff(puz.start_time, new Date()))
 			puz.clock = setTimeout(puz.time_disp, 49);
 		}
 	},
 	
-	display_moves: function() {
-		document.getElementById('moves').innerHTML = puz.moves;
-	},
-	
 	game_complete: function() {
+		/*
+		"game over" routine
+		*/
 		puz.end_time = new Date();
 		alert("You did it!\nYou took " + puz.moves + " moves.\nTime taken " + puz.time_format(puz.time_diff(puz.start_time, puz.end_time)));
-		document.getElementById('button').innerHTML = puz.btn_start;
+ 		document.getElementById(puz.id_btn).innerHTML = puz.btn_start;
 		puz.game_in_progress = false;
 		puz.board_active = false;
 	},
 	
 	transition_vars: function() {
+		/*
+		'sniffer' script that determins what transition definers the browser supports
+		returns 'false' if the browser doesn't support transitions
+		*/
 		var el = document.createElement('div'),
 			poss = [
 			["transition", 'transition', 'transitionend', "transform" ],
@@ -406,21 +500,57 @@ window.addEventListener('load', function() {
 </head>
 <body>
 
-<p id="button"><a href="#start" onclick="puz.start_game(); return false">Start Game</a></li></p>
+<style>
+#demo_puzzle {
+	font:14px arial,helvetica,sans-serif;
+	width:374px;
+	padding:10px;
+	margin:0 auto;
+	background:#9cf;
+	border-radius:10px;
+	border: 6px double #369;
+}
+#demo_puzzle ul {
+	list-style:none;
+	margin:0 0 10px 0;
+	padding:0;
+	float:left;
+}
+#demo_puzzle li {	
+	padding:6px 1em 6px 0;
+	float:left;
+	min-width:80px;
+}
+#demo_puzzle p {
+	margin:0;
+	padding:0;
+}
+#demo_puzzle p.button {
+	float:right;
+}
+#demo_puzzle p.button a {
+	text-decoration:none;
+	border:2px solid #036;
+	padding:6px;
+	border-radius:12px;
+	min-width:140px;
+	display:block;
+	text-align:center;
+	color:#fff;
+	background: #69c;
+}
+#demo_puzzle p.button a:hover {
+	color:#69c;
+	background: #fff;
 
-<ul>
-	<li>Time <span id="time">0</span></li>
-	<li>Moves <span id="moves">0</span></li>
-</ul>
+}
+#demo_puzzle p {
+	clear:both;
+}
 
-<p id="puzzle">
+</style>
+<div id="demo_puzzle">
 
-</p>
-
-<div id="debug_wrap" style="font-family:courier;position:absolute;right:1em; top:1em">
-	<div id="debug"></div>
-	<div>Space: <span id="debug_space"></span></div>
-	<div>Movable: <span id="debug_movable"></span></div>
 </div>
 
 
