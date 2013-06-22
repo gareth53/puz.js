@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html>
+<head>
+	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+	<title>untitled</title>
+<style>
+
+#puzzle {
+	position:relative;
+	padding:20px;
+	width:200px;
+	height:200px;
+}
+#puzzle a {
+	position:absolute;
+	display:block;
+	border:0px solid green;
+	width:90px;
+	height:90px;
+/*
+	background:url(http://4.bp.blogspot.com/-3F84Y9GQkwI/TzaASbnKohI/AAAAAAAASNQ/KAq0xKRAdqM/s1600/zooey_deschanel.jpg) no-repeat 0 0;
+	background:url(http://images.wikia.com/stephenking/images/f/ff/Clown.png) no-repeat 0 0;
+	background-size:400px 500px;
+*/
+	background:url(http://3.bp.blogspot.com/_SPYL8UC1UCY/TJ5k7SBhwwI/AAAAAAAAD8Q/XEYiYGjGKQw/s1600/Harold+Lloyd.jpg) no-repeat 0 0;
+	background-size:400px 400px;
+	text-decoration:none;
+}
+#puzzle a span {
+display:none;
+/*
+	position:absolute;
+	top:3px;
+	left:3px;
+	display:block;
+	padding:2px;
+	color:#f00;
+	background-color:#fff;
+*/
+}
+
+</style>
+<script>
+
+var puz = {
+
+	/* config */
+	board_w: 4,
+	board_h: 4,
+	tile_size: 90,
+	tile_spacing:4,
+	slide_delay: 80,
+	slide_event: 'onclick',
+
+	/* in game vars */
+	board: [],
+	space: [0, 0],
+	board_active: false,
+	start_time:0,
+	end_time:0,
+	moves:0,
+	last_tile_moved:0,
+	
+	btn_start: '<a href="#start" onclick="puz.start_game(); return false">Start Game</a>',
+	btn_reset: '<a href="#reset" onclick="puz.init(); return false">Reset</a>',
+	
+	init: function() {
+		if (document.ontouchstart) puz.slide_event = "ontouchstart";
+		puz.reset_game();
+		puz.build_board_map();
+		puz.build_board();
+	},
+
+	reset_game: function() {
+		puz.board_active = false;
+		puz.start_time = 0;
+		puz.end_time = 0;
+		puz.moves = 0;
+		puz.last_tile_moved = 0
+		document.getElementById('moves').innerHTML = '0';
+		document.getElementById('time').innerHTML = '0';		
+	},
+	
+	start_game:function() {
+		puz.reset_game()
+		puz.moves = 0;
+		document.getElementById('button').innerHTML = "&nbsp;"
+		puz.mix_board(puz.go);
+	},
+	
+	go: function () {
+		document.getElementById('button').innerHTML = puz.btn_reset;
+		puz.start_time = new Date();
+		puz.board_active = true;
+		puz.time_disp();
+	},
+	
+	build_board: function() {
+		var tiles = (puz.board_w * puz.board_h) - 1,
+			h = '',
+			top = 0,
+			left = 0,
+			pos = "";		
+		puz.board_el = document.getElementById('puzzle');
+		for (var i=1; i<=tiles; i++) {
+			top = Math.floor(i/(puz.board_w+.1));
+			left = ((i-1) % puz.board_w);
+			pos = left + "_" + top;
+			var top_pos = top*puz.tile_size + (puz.tile_spacing * top),
+				left_pos = left*puz.tile_size + (puz.tile_spacing * left)
+			h += '<a href="#shift" id="tile'+i+'" \
+					data-pos="'+pos+'" \
+					data-target="'+pos+'" \
+					style="top:'+ top_pos +'px;\
+					left:'+left_pos+'px;\
+					background-position: -'+left_pos+'px -'+top_pos+'px\
+					" ' + puz.slide_event + '="return puz.slide_click(this);"><span>'+i+'</span></a>';
+		}	
+		puz.board_el.innerHTML = h;
+	},
+
+	build_board_map: function() {
+		/*
+		builds a programmatical map of the board
+		*/
+		puz.board = [];
+		for (var i=0;i<puz.board_h;i++) {
+			var arr = [];
+			for (var q=1;q<=puz.board_w;q++) {
+				arr.push(q + (4*i))
+			}
+			puz.board.push(arr);
+		}
+		// make the 'space' in the bottom right tile
+		puz.board[puz.board_h-1][puz.board_w-1] = 0;
+		puz.space = [puz.board_h - 1, puz.board_w - 1];			
+	},
+	
+	mix_board: function(callback) {
+		/*
+			moves tiles randomly until the board is mixed
+		*/
+		var moves = 0,
+			total_time = 0,
+			slide_tile = function() {
+				var tiles = puz.movable_tiles();
+				do {
+					var rnd = parseInt(tiles.length * Math.random());
+					tile_num = tiles.splice(rnd, 1)
+				} while (tile_num == puz.last_tile_moved)
+				var to = puz.slide_invoke(document.getElementById("tile" + tile_num))
+			}
+		while (moves < (puz.board_w * puz.board_h * 4)) {
+			var delay = (puz.slide_delay * moves);
+			setTimeout(slide_tile, delay);
+			moves++;
+		}
+		puz.cback = setTimeout(callback, delay + 1);
+	},
+	
+	movable_tiles: function (dir) {
+		var tiles = [],
+			x = puz.space[0],
+			y = puz.space[1];
+			if (x>0) tiles.push(puz.board[y][x-1]);
+			if (x<puz.board_w-1) tiles.push(puz.board[y][x+1]);
+			if (y>0) tiles.push(puz.board[y-1][x]);
+			if (y<puz.board_h-1) tiles.push(puz.board[y+1][x]);
+			return tiles;
+	},
+	
+	slide_click: function(el) {
+		if (puz.board_active) {
+			return puz.slide_invoke(el);
+		}
+		return false;
+	},
+	
+	slide_invoke:function(el) {
+		var curr = el.dataset["pos"];
+		// compare the slide pos to the space pos.
+		// which way can we slide?
+		// up, down, left or right?
+		var coods = curr.split("_");
+		// is x-axis the same and in range?
+		var x_diff = puz.space[0] - coods[0],
+			y_diff = puz.space[1] - coods[1];
+		if (((Math.abs(x_diff) == 1) && (y_diff == 0)) || ((Math.abs(y_diff) == 1) && (x_diff == 0))) {
+			puz.slide_start(el, x_diff, y_diff);
+			return true;
+		}
+		return false;
+	},
+	
+	slide_start: function(el, x_dir, y_dir) {
+		puz.board_active = false;
+		el.style.left = parseInt(el.style.left) + (x_dir * puz.tile_size) + (x_dir * puz.tile_spacing) + "px";
+		el.style.top =  parseInt(el.style.top)  + (y_dir * puz.tile_size) + (y_dir * puz.tile_spacing) + "px";
+		puz.slide_finish(el, x_dir, y_dir);
+	},
+	
+	slide_finish: function(el, x_dir, y_dir) {
+		// change the stored co-ods of the tile
+		el.dataset["pos"] = puz.space[0] + "_" + puz.space[1];
+		// update board_game
+		var tile_num = parseInt(el.id.replace('tile', ''));
+		puz.board[puz.space[1]][puz.space[0]] = tile_num;
+		puz.last_tile_moved = tile_num;
+		// change the stored 'space' co-ods
+		puz.space[0] = puz.space[0] - x_dir;
+		puz.space[1] = puz.space[1] - y_dir;
+		puz.board[puz.space[1]][puz.space[0]] = 0;
+		if (puz.start_time) {
+			puz.moves++;
+			puz.display_moves();
+			if (!puz.check_game_state()) puz.board_active = true;
+		}
+	},
+	
+	check_game_state: function() {
+		/*
+		check to see if the puzzle has been solved
+		*/
+		for (var i=0, len = puz.board_el.childElementCount; i<len ;i++) {
+			if (puz.board_el.childNodes[i].dataset["pos"] != puz.board_el.childNodes[i].dataset["target"]) {
+				return false;
+			} 
+		}
+		puz.game_complete();
+		return true
+	},
+	
+	time_diff: function(start, end) {
+		return end.getTime() - start.getTime();
+	},
+
+	time_format: function(ms) {
+		var hrs = Math.floor(ms / (1000 * 60 * 60));
+		var rmndr = ms - (1000 * 60 * 60 * hrs);
+		var mins = Math.floor(rmndr / (60 * 1000))
+		rmndr = rmndr - (60 * 1000 * mins)
+		var secs = Math.floor(rmndr/1000);
+		return hrs + ":" + puz.pad_num(mins) + ":" + puz.pad_num(secs);
+	},
+	
+	pad_num: function(num) {
+		return (num < 10) ? '0' + num : num;
+	},
+	
+	time_disp: function() {
+		if (puz.board_active) {
+			document.getElementById('time').innerHTML = puz.time_format(puz.time_diff(puz.start_time, new Date()))
+			puz.clock = setTimeout(puz.time_disp, 49);
+		}
+	},
+	
+	display_moves: function() {
+		document.getElementById('moves').innerHTML = puz.moves;
+	},
+	
+	game_complete: function() {
+		puz.end_time = new Date();
+		alert("You did it!\nYou took " + puz.moves + " moves.\nTime taken " + puz.time_format(puz.time_diff(puz.start_time, puz.end_time)));
+		document.getElementById('button').innerHTML = puz.btn_start;
+		puz.board_active = false;
+	}
+};
+
+
+window.addEventListener('load', function() {
+	puz.init();
+});
+
+
+
+
+</script>
+
+
+</head>
+<body>
+
+<p id="button"><a href="#start" onclick="puz.start_game(); return false">Start Game</a></li></p>
+
+<ul>
+	<li>Time <span id="time">0</span></li>
+	<li>Moves <span id="moves">0</span></li>
+</ul>
+
+<p id="puzzle">
+
+</p>
+
+</body>
+</html>
