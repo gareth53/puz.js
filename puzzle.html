@@ -3,47 +3,9 @@
 <head>
 	<meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 	<title>Puzzle Game Demo</title>
-
-<!--
-
-<script charset="utf-8" src="http://widgets.twimg.com/j/2/widget.js"></script>
 <script>
-new TWTR.Widget({
-  version: 2,
-  type: 'profile',
-  rpp: 4,
-  interval: 30000,
-  width: 250,
-  height: 300,
-  theme: {
-    shell: {
-      background: '#333333',
-      color: '#ffffff'
-    },
-    tweets: {
-      background: '#000000',
-      color: '#ffffff',
-      links: '#4aed05'
-    }
-  },
-  features: {
-    scrollbar: false,
-    loop: false,
-    live: false,
-    behavior: 'all'
-  }
-}).render().setUser('gareth53').start();
-</script>
-
-
--->
-
-<script>
-
 /*
-
 TODO
-
 - BASE STYLES
 - WRITE STYLES IN WITHOUT <STYLE> TAG
 - mix board without transitions option
@@ -70,401 +32,423 @@ TODO
 - high scores (using LocalStorage)
 	- fewest moves (date)
 	- fastest time (date)
-
 */
+var Puz = function (id, config) {
+	// always create a new var, even if the 'new' keyword is omitted
+	if (!(this instanceof Puz)) {
+		return this.apply((new Puz()), arguments);
+	}
+	this.board_w = 4;
+	this.board_h = 4;
+	this.tile_size = 90;
+	this.tile_spacing = 4;
+	this.slide_delay = 100;
+/* CSS specifics */
+	this.image  ="";
+	this.background_image = "egg-money-quiz.png";
+	this.background_size = "";
+/* in game vars */
+	this.slide_event = 'onclick';
+	this.board_el = undefined;
+	this.board_wrapper_el = undefined;
+	this.board = [];
+	this.space = [0, 0];
+	this.game_in_progress = false;
+	this.board_active = false;
+	this.start_time = 0;
+	this.end_time = 0;
+	this.moves = 0;
+	this.last_tile_moved = 0;
+	this.btn_start = '<a href="#start" onclick="demo_puzzle.start_game(); return false;">Start Game</a>';
+	this.btn_reset = '<a href="#reset" onclick="demo_puzzle.init(); return false;">Reset</a>';
+	// WHAT DO WE DO IF THERE'S NO ID?
+	this.board_wrapper_id = id;
+	if (config) {
+		for (setting in config) {
+			this[setting] = config[setting];
+		}
+	}
+	return this;
+};
 
-
-
-var puz = {
-
-	/* config */
-	board_wrapper_id: "demo_puzzle",
-	board_w: 4,
-	board_h: 4,
-	tile_size: 90,
-	tile_spacing:4,
-	slide_delay: 100,
-	// CSS specifics
-	image:"",
-	background_image: "",
-	background_size: "",
-
-	/* in game vars */
-	slide_event: 'onclick',
-	board_el: undefined,
-	board_wrapper_el: undefined,
-	board: [],
-	space: [0, 0],
-	game_in_progress: false,
-	board_active: false,
-	start_time:0,
-	end_time:0,
-	moves:0,
-	last_tile_moved:0,
-	
-	btn_start: '<a href="#start" onclick="puz.start_game(); return false">Start Game</a>',
-	btn_reset: '<a href="#reset" onclick="puz.init(); return false">Reset</a>',
-	
-	/* transition settings */
-	transition: false,
-	
-	init: function() {
-		if (document.ontouchstart) puz.slide_event = "ontouchstart";
-		puz.board_wrapper_el = document.getElementById(puz.board_wrapper_id);
-		puz.generate_dom_ids();
-		puz.build_game_base();
-		puz.generate_styles();
-		puz.reset_game();
-		puz.build_board_map();
-		puz.build_board();
-		puz.add_tileslide_event();
-		puz.transition_dist = puz.tile_size + puz.tile_spacing;
-		puz.transition = puz.transition_vars()
+Puz.prototype = {
+	debug: function () {
+		console.log(this);
 	},
 
-	build_game_base: function() {
+	init: function () {
+		var body;
+		if (document.ontouchstart) this.slide_event = "ontouchstart";
+		this.board_wrapper_el = document.getElementById(this.board_wrapper_id);
+		// if this is null, attach a div with the ID
+		if (!this.board_wrapper_el) {
+			this.board_wrapper_el = document.createElement('div');
+			this.board_wrapper_el.setAttribute("id", this.board_wrapper_id);
+			body = document.getElementsByTagName('body')[0];
+			body.appendChild(this.board_wrapper_el);
+		}
+		this.generate_dom_ids();
+		this.build_game_base();
+		this.generate_styles();
+		this.reset_game();
+		this.build_board_map();
+		this.build_board();
+		this.add_tileslide_event();
+		this.transition_dist = this.tile_size + this.tile_spacing;
+		this.transition = this.transition_vars();
+	},
+
+	build_game_base: function () {
 		/*
-		thr base markup surrounding the puzzle
+		the base markup surrounding the puzzle
 		*/
-		puz.board_wrapper_el.innerHTML ='\
-			<p class="button" id="' + puz.id_btn + '"></p>\
+		this.board_wrapper_el.innerHTML ='\
+			<p class="button" id="' + this.id_btn + '"></p>\
 			<ul>\
-				<li>Moves <span id="' + puz.id_moves + '">0</span></li>\
-				<li>Time <span id="' + puz.id_time + '">0</span></li>\
+				<li>Moves <span id="' + this.id_moves + '">0</span></li>\
+				<li>Time <span id="' + this.id_time + '">0</span></li>\
 			</ul>\
-			<p id="' + puz.id_puzzle + '"></p>';
+			<p id="' + this.id_puzzle + '"></p>';
 	},
 
-	generate_dom_ids: function() {
+	generate_dom_ids: function () {
 		/*
 		DOM element IDs
 		*/
-		puz.id_btn    = puz.board_wrapper_id + "_btn";
-		puz.id_time   = puz.board_wrapper_id + "_time";
-		puz.id_moves  = puz.board_wrapper_id + "_moves";
-		puz.id_puzzle = puz.board_wrapper_id + "_puzzle";
-		puz.id_tile = puz.board_wrapper_id + "_tile";
+		this.id_btn    = this.board_wrapper_id + "_btn";
+		this.id_time   = this.board_wrapper_id + "_time";
+		this.id_moves  = this.board_wrapper_id + "_moves";
+		this.id_puzzle = this.board_wrapper_id + "_puzzle";
+		this.id_tile   = this.board_wrapper_id + "_tile";
 	},
 
-	generate_styles: function() {
+	generate_styles: function () {
 		/*
 		writes styles into the host document
 		*/
 		var selectors = {
-				selector1 : '#' + puz.id_puzzle,
-				selector2 : '#' + puz.id_puzzle + ' a',
-				selector3 : '#' + puz.id_puzzle + ' a span'
-			};
+				selector1 : '#' + this.id_puzzle,
+				selector2 : '#' + this.id_puzzle + ' a',
+				selector3 : '#' + this.id_puzzle + ' a span'
+			},
 			styles = {
 				selector1 : {
 					'position': 'relative',
-					'width': (puz.board_w * puz.tile_size) + (puz.tile_spacing * (puz.board_w - 1)) + "px", 
-					'height': (puz.board_h * puz.tile_size) + (puz.tile_spacing * (puz.board_h - 1)) + "px" 
+					'width': (this.board_w * this.tile_size) + (this.tile_spacing * (this.board_w - 1)) + "px",
+					'height': (this.board_h * this.tile_size) + (this.tile_spacing * (this.board_h - 1)) + "px"
 				},
 				selector2 : {
 					'position': 'absolute',
 					'display': 'block',
-					'width': '90px',
-					'height': '90px',
-					'background-image': 'url(http://3.bp.blogspot.com/_SPYL8UC1UCY/TJ5k7SBhwwI/AAAAAAAAD8Q/XEYiYGjGKQw/s1600/Harold+Lloyd.jpg)',
+					'width': this.tile_size + 'px',
+					'height': this.tile_size + 'px',
+					'background-image': 'url(' + this.background_image + ')',
 					'background-repeat': 'no-repeat',
-					'background-size': '400px 400px',
+					'background-size': this.background_size,
 					'text-decoration': 'none',
 				},
 				selector3 : {
 					'display': 'none'
 				}
-			};
-		var css = "";
+			},
+			css = "",
+			style,
+			def,
+			styleDefs,
+			styleTag = document.createElement('style');
 		for (style in styles) {
 			css += "\n" + selectors[style] + " {";
 			for (def in styles[style]) {
-				css += "\n\t" + def + ":" + styles[style][def] + ";"
+				if (styles[style][def]) {
+					css += "\n\t" + def + ":" + styles[style][def] + ";"
+				}
 			}
 			css += "\n}";
 		}
-		var styleTag = document.createElement('style'),
-			styleDefs = document.createTextNode(css);
+		styleDefs = document.createTextNode(css);
 		styleTag.appendChild(styleDefs);
-		puz.board_wrapper_el.appendChild(styleTag);
+		this.board_wrapper_el.appendChild(styleTag);
 	},
 
-	reset_game: function() {
-		puz.board_active = false;
-		puz.start_time = 0;
-		puz.end_time = 0;
-		puz.moves = 0;
-		puz.game_in_progress = false;
-		puz.moves = 0;
-		puz.last_tile_moved = 0;
-		document.getElementById(puz.id_moves).innerHTML = '0';
-		document.getElementById(puz.id_time).innerHTML = '0';
-		document.getElementById(puz.id_btn).innerHTML = puz.btn_start;
+	reset_game: function () {
+		this.board_active = false;
+		this.start_time = 0;
+		this.end_time = 0;
+		this.moves = 0;
+		this.game_in_progress = false;
+		this.moves = 0;
+		this.last_tile_moved = 0;
+		document.getElementById(this.id_moves).innerHTML = '0';
+		document.getElementById(this.id_time).innerHTML = '0';
+		document.getElementById(this.id_btn).innerHTML = this.btn_start;
 	},
-	
-	start_game:function() {
-		puz.reset_game();
-		document.getElementById(puz.id_btn).innerHTML = "&nbsp;"
-		puz.mix_board(puz.go);
+
+	start_game:function () {
+		this.reset_game();
+		document.getElementById(this.id_btn).innerHTML = "&nbsp;"
+		this.mix_board(this.go);
 	},
-	
-	go: function () {
+
+	go: function (obj) {
 		/*
 		function that is fred by the callback once the board has been mixed
 		*/
-		document.getElementById(puz.id_btn).innerHTML = puz.btn_reset;
-		puz.start_time = new Date();
-		puz.game_in_progress = true;
-		puz.board_active = true;
-		puz.time_disp();
+		// TODO - figure out how to get the object in scope!
+		document.getElementById(obj.id_btn).innerHTML = obj.btn_reset;
+		obj.start_time = new Date();
+		obj.game_in_progress = true;
+		obj.board_active = true;
+		obj.time_disp();
 	},
-	
-	build_board: function() {
+
+	build_board: function () {
 		/*
 		adds tiles to the board
 		*/
-		var tiles = (puz.board_w * puz.board_h) - 1,
+		var tiles = (this.board_w * this.board_h) - 1,
 			h = '',
 			top = 0,
 			left = 0,
 			pos = "";
-			puz.board_el = document.getElementById(puz.id_puzzle);
-		for (var i=1; i<=tiles; i++) {
-			top = Math.floor(i/(puz.board_w+.1));
-			left = ((i-1) % puz.board_w);
-			var top_pos = top*puz.tile_size + (puz.tile_spacing * top),
-				left_pos = left*puz.tile_size + (puz.tile_spacing * left)
-			h += '<a href="#shift" id="' + puz.id_tile + i + '" \
+			this.board_el = document.getElementById(this.id_puzzle);
+		for (var i = 1; i <= tiles; i++) {
+			top = Math.floor(i/(this.board_w+.1));
+			left = ((i - 1) % this.board_w);
+			var top_pos  = top * this.tile_size +  (this.tile_spacing * top),
+				left_pos = left * this.tile_size + (this.tile_spacing * left)
+			h += '<a href="#shift" id="' + this.id_tile + i + '" \
 					style="top:'+ top_pos +'px;\
 					left:'+left_pos+'px;\
 					background-position: -'+left_pos+'px -'+top_pos+'px"><span>'+i+'</span></a>';
-		}	
-		puz.board_el.innerHTML = h;
+		}
+		this.board_el.innerHTML = h;
 	},
-
-	add_tileslide_event: function() {
-		puz.board_wrapper_el.addEventListener('click', function(e){
-			return puz.slide_click(e.srcElement);
+	add_tileslide_event: function () {
+		that = this;
+		this.board_wrapper_el.addEventListener('click', function (e){
+			return that.slide_click(e.srcElement);
 		})
 	},
-
-	build_board_map: function() {
+	build_board_map: function () {
 		/*
 		builds a programmatical map of the board
 		*/
-		puz.board = [];
-		for (var i=0;i<puz.board_h;i++) {
+		this.board = [];
+		for (var i=0;i<this.board_h;i++) {
 			var arr = [];
-			for (var q=1;q<=puz.board_w;q++) {
-				arr.push(q + (puz.board_w*i))
+			for (var q=1;q<=this.board_w;q++) {
+				arr.push(q + (this.board_w*i))
 			}
-			puz.board.push(arr);
+			this.board.push(arr);
 		}
 		// make the 'space' in the bottom right tile
-		puz.board[puz.board_h-1][puz.board_w-1] = 0;
-		puz.space = [puz.board_h - 1, puz.board_w - 1];			
+		this.board[this.board_h-1][this.board_w-1] = 0;
+		this.space = [this.board_h - 1, this.board_w - 1];		
 	},
-	
-	mix_board: function(callback) {
+
+	mix_board: function (callback) {
 		/*
 			moves tiles randomly until the board is mixed
 		*/
-		var moves = 0,
-			total_time = 0,//(puz.board_w * puz.board_h * 4 * puz.slide_delay),
-			slide_delay = puz.slide_delay;
-			slide_tile = function() {
-				var tiles = puz.movable_tiles();
+		var that = this,
+			moves = 0,
+			total_time = 0,//(this.board_w * this.board_h * 4 * this.slide_delay),
+			slide_delay = this.slide_delay,
+			rnd,
+			tiles,
+			tile_num;
+			slide_tile = function () {
+				tiles = that.movable_tiles();
 				do {
-					var rnd = parseInt(tiles.length * Math.random());
-					tile_num = tiles.splice(rnd, 1)
-				} while (tile_num == puz.last_tile_moved)
-				var to = puz.slide_invoke(document.getElementById(puz.id_tile + tile_num))
+					rnd = parseInt(tiles.length * Math.random());
+					tile_num = tiles.splice(rnd, 1);
+				} while (tile_num == this.last_tile_moved);
+				var to = that.slide_invoke(document.getElementById(that.id_tile + tile_num));
 			}
-//		if (total_time > 20000) puz.active_slide_delay = 1;
-		while (moves < (puz.board_w * puz.board_h * 4)) {
+//		if (total_time > 20000) this.active_slide_delay = 1;
+		while (moves < (this.board_w * this.board_h * 4)) {
 			var delay = (slide_delay * moves);
 			setTimeout(slide_tile, delay);
 			moves++;
 		}
-		puz.cback = setTimeout(callback, delay + 1000);
+		cback = setTimeout(function() {
+				callback(that);
+			}, delay + 1000);
 	},
-	
+
 	movable_tiles: function (dir) {
 		/*
 		returns a list of which tiles can be moved
 		*/
 		var tiles = [],
-			x = puz.space[0],
-			y = puz.space[1];
-			if (x>0) tiles.push(puz.board[y][x-1]);
-			if (x<puz.board_w-1) tiles.push(puz.board[y][x+1]);
-			if (y>0) tiles.push(puz.board[y-1][x]);
-			if (y<puz.board_h-1) tiles.push(puz.board[y+1][x]);
+			x = this.space[0],
+			y = this.space[1];
+			if (x > 0) tiles.push(this.board[y][x - 1]);
+			if (x < this.board_w-1) tiles.push(this.board[y][x + 1]);
+			if (y > 0) tiles.push(this.board[y - 1][x]);
+			if (y < this.board_h-1) tiles.push(this.board[y + 1][x]);
 			return tiles;
 	},
-	
-	slide_click: function(el) {
+
+	slide_click: function (el) {
 		/*
 		function that is attached to the UI event of a tile
 		ensures tiles can only be manually moved when the game allows it
 		*/
-		if (puz.board_active) {
-			puz.slide_invoke(el);
+		if (this.board_active) {
+			this.slide_invoke(el);
 		}
 		return false;
 	},
-
 	find_tile: function (id) {
 		/*
 		function that searchs the board map adn returns x and y coordinates
 		*/
-		var x, y; 
-		for (var row in puz.board) {
+		var x, y, row, col;
+		for (row in this.board) {
 			y = row;
-			for (var col in puz.board[row]) {
-				if (puz.board[row][col] === id) {
+			for (col in this.board[row]) {
+				if (this.board[row][col] === id) {
 					return [col, y];
 				}
 			}
 		}
 	},
-
-	slide_invoke:function(el) {
+	slide_invoke:function (el) {
 		/*
 		checks whether any given slide can be moved
 		*/
 		var curr = el.id;
-		var curr_num = parseInt(curr.replace(puz.id_tile,''));
+		var curr_num = parseInt(curr.replace(this.id_tile,''));
 		// compare the slide pos to the space pos.
 		// which way can we slide? up, down, left or right?
-		var coods = puz.find_tile(curr_num);
-		var x_diff = puz.space[0] - coods[0],
-			y_diff = puz.space[1] - coods[1];
+		var coods =  this.find_tile(curr_num);
+		var x_diff = this.space[0] - coods[0],
+			y_diff = this.space[1] - coods[1];
 		// one axis value has to be the same and the other within 1
 		if (((Math.abs(x_diff) == 1) && (y_diff == 0)) || ((Math.abs(y_diff) == 1) && (x_diff == 0))) {
-			puz.slide_start(el, x_diff, y_diff);
+			this.slide_start(el, x_diff, y_diff);
 			return true;
 		}
 		return false;
 	},
-	
-	slide_start: function(el, x_dir, y_dir) {
+
+	slide_start: function (el, x_dir, y_dir) {
 		/*
 		disables the board for further clicks
 		moves the tile, with a transition if possible
 		*/
-		puz.board_active = false;
-		puz.last_tile_moved = el;
+		var that = this;
+		this.board_active = false;
+		this.last_tile_moved = el;
 		var x_st = parseInt(el.style.left),
 			y_st = parseInt(el.style.top);
-		if (puz.transition) {
-			var transitionEnd = function() {
-				// cancel the transition stuff & then call puz.slide()
-				el = puz.last_tile_moved;
-				el.style[puz.transition.property + 'Duration'] = "0";
-				el.style[puz.transition.transform] = "translate3d(0, 0, 0)";
-				puz.slide(el, x_st, y_st, x_dir, y_dir);
+		if (this.transition) {
+			var transitionEnd = function () {
+				// cancel the transition stuff & then call this.slide()
+				el = that.last_tile_moved;
+				el.style[that.transition.property + 'Duration'] = "0";
+				el.style[that.transition.transform] = "translate3d(0, 0, 0)";
+				that.slide(el, x_st, y_st, x_dir, y_dir);
 			}
 			// NOTE: not using event Listeners here because they can't be removed reliably x-browser :( August 2012
-			var delay = Math.floor(puz.slide_delay * .75);
-			if (puz.cleanUp) clearTimeout(puz.cleanUp);
-			puz.cleanUp = setTimeout(transitionEnd, delay + 10)
-			el.style[puz.transition.property + 'Duration'] =  delay + "ms";
-			el.style[puz.transition.transform] = "translate3d(" + (x_dir * puz.transition_dist) + "px, " + (y_dir * puz.transition_dist) + "px, 0)";
+			var delay = Math.floor(that.slide_delay * .75);
+			if (that.cleanUp) clearTimeout(that.cleanUp);
+			that.cleanUp = setTimeout(transitionEnd, delay + 10)
+			el.style[that.transition.property + 'Duration'] =  delay + "ms";
+			el.style[that.transition.transform] = "translate3d(" + (x_dir * that.transition_dist) + "px, " + (y_dir * that.transition_dist) + "px, 0)";
 		}
 		else {
-			puz.slide(el, x_st, y_st, x_dir, y_dir);
+			that.slide(el, x_st, y_st, x_dir, y_dir);
 		}
 	},
-
-	slide: function(el, x_st, y_st, x_dir, y_dir) {
+	slide: function (el, x_st, y_st, x_dir, y_dir) {
 		/*
 		moves a tile element in the specified direction from a specified starting point
 		*/
-		el.style.left = x_st + (x_dir * puz.transition_dist) + "px";
-		el.style.top =  y_st  + (y_dir * puz.transition_dist) + "px";
-		puz.slide_finish(el, x_dir, y_dir);
+		el.style.left = x_st + (x_dir *  this.transition_dist) + "px";
+		el.style.top =  y_st  + (y_dir * this.transition_dist) + "px";
+		this.slide_finish(el, x_dir, y_dir);
 	},
-	
-	slide_finish: function(el, x_dir, y_dir) {
+
+	slide_finish: function (el, x_dir, y_dir) {
 		/*
 		once the UI has been animated, update the stored game state variables
 		check to see if the puzzle has been completed
 		*/
 		// update board_game
-		var tile_num = parseInt(el.id.replace(puz.id_tile, ''));
-		puz.board[puz.space[1]][puz.space[0]] = tile_num;
-		puz.last_tile_moved = tile_num;
+		var tile_num = parseInt(el.id.replace(this.id_tile, ''));
+		this.board[this.space[1]][this.space[0]] = tile_num;
+		this.last_tile_moved = tile_num;
 		// change the stored 'space' co-ods
-		puz.space = [puz.space[0] - x_dir, puz.space[1] - y_dir];
-		puz.board[puz.space[1]][puz.space[0]] = 0;
-		if (puz.game_in_progress) {
-			puz.moves++;
-			document.getElementById(puz.id_moves).innerHTML = puz.moves;
-			if (!puz.check_game_complete()) puz.board_active = true;
-			else puz.game_complete();
+		this.space = [this.space[0] - x_dir, this.space[1] - y_dir];
+		this.board[this.space[1]][this.space[0]] = 0;
+		if (this.game_in_progress) {
+			this.moves++;
+			document.getElementById(this.id_moves).innerHTML = this.moves;
+			if (!this.check_game_complete()) this.board_active = true;
+			else this.game_complete();
 		}
 	},
-
-	check_game_complete: function() {
+	check_game_complete: function () {
 		/*
 		check the board map to see if the puzzle has been solved
 		*/
 		var counter = 1
-		for (var row in puz.board) {
-			for (var col in puz.board[row]) {
-				if ((puz.board[row][col] != counter) && (counter < puz.board_w * puz.board_h)) return false; 
+		for (var row in this.board) {
+			for (var col in this.board[row]) {
+				if ((this.board[row][col] != counter) && (counter < this.board_w * this.board_h)) return false;
 				counter++;
-			} 
+			}
 		}
-		return true
+		return true;
 	},
-	
-	time_diff: function(start, end) {
+
+	time_diff: function (start, end) {
 		/*
 		returns difference in two times, in milliseconds
 		*/
 		return end.getTime() - start.getTime();
 	},
-
-	time_format: function(ms) {
+	time_format: function (ms) {
 		/*
 		formats a value in milliseconds into a human-readable time
 		*/
-		var hrs = Math.floor(ms / (1000 * 60 * 60));
-	 	var rmndr = ms - (1000 * 60 * 60 * hrs);
-		var mins = Math.floor(rmndr / (60 * 1000))
+		var hrs, rmndr, mins, secs;
+		hrs = Math.floor(ms / (1000 * 60 * 60));
+	 	rmndr = ms - (1000 * 60 * 60 * hrs);
+		mins = Math.floor(rmndr / (60 * 1000))
 		rmndr = rmndr - (60 * 1000 * mins)
-		var secs = Math.floor(rmndr/1000);
-		return hrs + ":" + puz.pad_num(mins) + ":" + puz.pad_num(secs);
+		secs = Math.floor(rmndr/1000);
+		return hrs + ":" + this.pad_num(mins) + ":" + this.pad_num(secs);
 	},
-	
-	pad_num: function(num) {
+
+	pad_num: function (num) {
 		return (num < 10) ? '0' + num : num;
 	},
-	
-	time_disp: function() {
+
+	time_disp: function () {
 		/*
 		updates the timer
 		*/
-		if (puz.game_in_progress) {
-			document.getElementById(puz.id_time).innerHTML = puz.time_format(puz.time_diff(puz.start_time, new Date()))
-			puz.clock = setTimeout(puz.time_disp, 49);
+		if (this.game_in_progress) {
+			document.getElementById(this.id_time).innerHTML = this.time_format(this.time_diff(this.start_time, new Date()))
+			this.clock = setTimeout(this.time_disp, 49);
 		}
 	},
-	
-	game_complete: function() {
+
+	game_complete: function () {
 		/*
 		"game over" routine
 		*/
-		puz.end_time = new Date();
-		alert("You did it!\nYou took " + puz.moves + " moves.\nTime taken " + puz.time_format(puz.time_diff(puz.start_time, puz.end_time)));
- 		document.getElementById(puz.id_btn).innerHTML = puz.btn_start;
-		puz.game_in_progress = false;
-		puz.board_active = false;
+		this.end_time = new Date();
+		alert("You did it!\nYou took " + this.moves + " moves.\nTime taken " + this.time_format(this.time_diff(this.start_time, this.end_time)));
+ 		document.getElementById(this.id_btn).innerHTML = this.btn_start;
+		this.game_in_progress = false;
+		this.board_active = false;
 	},
-	
-	transition_vars: function() {
+
+	transition_vars: function () {
 		/*
 		'sniffer' script that determins what transition definers the browser supports
 		returns 'false' if the browser doesn't support transitions
@@ -483,7 +467,7 @@ var puz = {
 					'property': poss[p][0],
 					'cssName': poss[p][1],
 					'event': poss[p][2],
-					'transform': poss[p][3] 
+					'transform': poss[p][3]
 				}
 				break;
 			}
@@ -492,20 +476,21 @@ var puz = {
 	}
 };
 
+var demo_puzzle;
 
-window.addEventListener('load', function() {
-	puz.init();
+window.addEventListener('load', function () {
+	demo_puzzle = new Puz('demo_puzzle', {
+		'background_image': 'egyptian_hall.jpg',
+		'background_size': '400px 400px'
+	});
+	demo_puzzle.init();
 });
-
-
 
 
 </script>
 
-
 </head>
 <body>
-
 <style>
 #demo_puzzle {
 	font:14px arial,helvetica,sans-serif;
@@ -522,7 +507,7 @@ window.addEventListener('load', function() {
 	padding:0;
 	float:left;
 }
-#demo_puzzle li {	
+#demo_puzzle li {
 	padding:6px 1em 6px 0;
 	float:left;
 	min-width:80px;
@@ -548,17 +533,13 @@ window.addEventListener('load', function() {
 #demo_puzzle p.button a:hover {
 	color:#69c;
 	background: #fff;
-
 }
 #demo_puzzle p {
 	clear:both;
 }
-
 </style>
 <div id="demo_puzzle">
-
 </div>
-
 
 </body>
 </html>
