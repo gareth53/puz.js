@@ -17,14 +17,15 @@
 	border:0px solid green;
 	width:90px;
 	height:90px;
-/*
+
 	background:url(http://4.bp.blogspot.com/-3F84Y9GQkwI/TzaASbnKohI/AAAAAAAASNQ/KAq0xKRAdqM/s1600/zooey_deschanel.jpg) no-repeat 0 0;
-	background:url(http://images.wikia.com/stephenking/images/f/ff/Clown.png) no-repeat 0 0;
-	background-size:400px 500px;
+/*	background:url(http://images.wikia.com/stephenking/images/f/ff/Clown.png) no-repeat 0 0;
 */
-	background:url(http://3.bp.blogspot.com/_SPYL8UC1UCY/TJ5k7SBhwwI/AAAAAAAAD8Q/XEYiYGjGKQw/s1600/Harold+Lloyd.jpg) no-repeat 0 0;
-	background-size:400px 400px;
-	text-decoration:none;
+
+/*	background:url(http://3.bp.blogspot.com/_SPYL8UC1UCY/TJ5k7SBhwwI/AAAAAAAAD8Q/XEYiYGjGKQw/s1600/Harold+Lloyd.jpg) no-repeat 0 0;
+	background-size:800px 800px;
+
+*/	text-decoration:none;
 }
 #puzzle a span {
 display:none;
@@ -49,7 +50,7 @@ var puz = {
 	board_h: 4,
 	tile_size: 90,
 	tile_spacing:4,
-	slide_delay: 80,
+	slide_delay: 100,
 	slide_event: 'onclick',
 
 	/* in game vars */
@@ -63,6 +64,25 @@ var puz = {
 	
 	btn_start: '<a href="#start" onclick="puz.start_game(); return false">Start Game</a>',
 	btn_reset: '<a href="#reset" onclick="puz.init(); return false">Reset</a>',
+	
+	styles: {
+		'.puzzle' : {
+			'position': 'relative'
+		},
+		'.puzzle a' : {
+			'position': 'absolute',
+			'display': 'block',
+			'width': '90px',
+			'height': '90px',
+			'background-image': 'url(http://3.bp.blogspot.com/_SPYL8UC1UCY/TJ5k7SBhwwI/AAAAAAAAD8Q/XEYiYGjGKQw/s1600/Harold+Lloyd.jpg)',
+			'background-repeat': 'no-repeat',
+//			'background-size': '400px 400px';
+			'text-decoration': 'none',
+		},
+		'.puzzle a span' : {
+			'display': 'none'
+		}
+	},
 	
 	init: function() {
 		if (document.ontouchstart) puz.slide_event = "ontouchstart";
@@ -78,7 +98,7 @@ var puz = {
 		puz.moves = 0;
 		puz.last_tile_moved = 0
 		document.getElementById('moves').innerHTML = '0';
-		document.getElementById('time').innerHTML = '0';		
+		document.getElementById('time').innerHTML = '0';
 	},
 	
 	start_game:function() {
@@ -100,17 +120,14 @@ var puz = {
 			h = '',
 			top = 0,
 			left = 0,
-			pos = "";		
+			pos = "";
 		puz.board_el = document.getElementById('puzzle');
 		for (var i=1; i<=tiles; i++) {
 			top = Math.floor(i/(puz.board_w+.1));
 			left = ((i-1) % puz.board_w);
-			pos = left + "_" + top;
 			var top_pos = top*puz.tile_size + (puz.tile_spacing * top),
 				left_pos = left*puz.tile_size + (puz.tile_spacing * left)
 			h += '<a href="#shift" id="tile'+i+'" \
-					data-pos="'+pos+'" \
-					data-target="'+pos+'" \
 					style="top:'+ top_pos +'px;\
 					left:'+left_pos+'px;\
 					background-position: -'+left_pos+'px -'+top_pos+'px\
@@ -127,7 +144,7 @@ var puz = {
 		for (var i=0;i<puz.board_h;i++) {
 			var arr = [];
 			for (var q=1;q<=puz.board_w;q++) {
-				arr.push(q + (4*i))
+				arr.push(q + (puz.board_w*i))
 			}
 			puz.board.push(arr);
 		}
@@ -141,7 +158,8 @@ var puz = {
 			moves tiles randomly until the board is mixed
 		*/
 		var moves = 0,
-			total_time = 0,
+			total_time = (puz.board_w * puz.board_h * 4 * puz.slide_delay),
+			slide_delay = puz.slide_delay;
 			slide_tile = function() {
 				var tiles = puz.movable_tiles();
 				do {
@@ -150,8 +168,9 @@ var puz = {
 				} while (tile_num == puz.last_tile_moved)
 				var to = puz.slide_invoke(document.getElementById("tile" + tile_num))
 			}
+		if (total_time > 20000) slide_delay = 1;
 		while (moves < (puz.board_w * puz.board_h * 4)) {
-			var delay = (puz.slide_delay * moves);
+			var delay = (slide_delay * moves);
 			setTimeout(slide_tile, delay);
 			moves++;
 		}
@@ -171,17 +190,33 @@ var puz = {
 	
 	slide_click: function(el) {
 		if (puz.board_active) {
-			return puz.slide_invoke(el);
+			puz.slide_invoke(el);
 		}
 		return false;
 	},
-	
+
+	find_tile: function (id) {
+		/*
+		function that searchs the board map adn returns x and y coordinates
+		*/
+		var x, y; 
+		for (var row in puz.board) {
+			y = row;
+			for (var col in puz.board[row]) {
+				if (puz.board[row][col] === id) {
+					return [col, y];
+				}
+			}
+		}
+	},
+
 	slide_invoke:function(el) {
-		var curr = el.dataset["pos"];
+		var curr = el.id;
+		var curr_num = parseInt(curr.replace('tile',''));
 		// compare the slide pos to the space pos.
 		// which way can we slide?
 		// up, down, left or right?
-		var coods = curr.split("_");
+		var coods = puz.find_tile(curr_num);
 		// is x-axis the same and in range?
 		var x_diff = puz.space[0] - coods[0],
 			y_diff = puz.space[1] - coods[1];
@@ -194,14 +229,31 @@ var puz = {
 	
 	slide_start: function(el, x_dir, y_dir) {
 		puz.board_active = false;
-		el.style.left = parseInt(el.style.left) + (x_dir * puz.tile_size) + (x_dir * puz.tile_spacing) + "px";
-		el.style.top =  parseInt(el.style.top)  + (y_dir * puz.tile_size) + (y_dir * puz.tile_spacing) + "px";
+		var x_trans = (x_dir * puz.tile_size) + (x_dir * puz.tile_spacing),
+			y_trans = (y_dir * puz.tile_size) + (y_dir * puz.tile_spacing);
+/*
+el.addEventListener('webkitTransitionEnd', function() {
+		el.style.left = parseInt(el.style.left) + x_trans + "px";
+		el.style.top =  parseInt(el.style.top)  + y_trans + "px";
+		el.style.webkitTransition = "top 0";
+		el.style.webkitTransitionDuration = "0";
+el.removeEventListener('webkitTransitionEnd')
+		puz.slide_finish(el, x_dir, y_dir);	
+
+})
+
+el.style.webkitTransitionDuration = puz.slide_delay + "ms";
+//el.style.webkitTransform = "translate3d(0,0,0)";
+el.style.webkitTransition = "top " + x_trans +  "px";
+
+/**/
+		el.style.left = parseInt(el.style.left) + x_trans + "px";
+		el.style.top =  parseInt(el.style.top)  + y_trans + "px";
 		puz.slide_finish(el, x_dir, y_dir);
+
 	},
 	
 	slide_finish: function(el, x_dir, y_dir) {
-		// change the stored co-ods of the tile
-		el.dataset["pos"] = puz.space[0] + "_" + puz.space[1];
 		// update board_game
 		var tile_num = parseInt(el.id.replace('tile', ''));
 		puz.board[puz.space[1]][puz.space[0]] = tile_num;
@@ -214,21 +266,24 @@ var puz = {
 			puz.moves++;
 			puz.display_moves();
 			if (!puz.check_game_state()) puz.board_active = true;
+			else puz.game_complete();
 		}
 	},
-	
+
 	check_game_state: function() {
 		/*
-		check to see if the puzzle has been solved
+		check the board map to see if the puzzle has been solved
 		*/
-		for (var i=0, len = puz.board_el.childElementCount; i<len ;i++) {
-			if (puz.board_el.childNodes[i].dataset["pos"] != puz.board_el.childNodes[i].dataset["target"]) {
-				return false;
+		var counter = 1
+		for (var row in puz.board) {
+			for (var col in puz.board[row]) {
+				if ((puz.board[row][col] != counter) && (counter < puz.board_w * puz.board_h)) return false; 
+				counter++;
 			} 
 		}
-		puz.game_complete();
 		return true
 	},
+
 	
 	time_diff: function(start, end) {
 		return end.getTime() - start.getTime();
