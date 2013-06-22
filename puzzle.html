@@ -117,6 +117,7 @@ var puz = {
 		puz.reset_game();
 		puz.build_board_map();
 		puz.build_board();
+		puz.add_tileslide_event();
 		puz.transition_dist = puz.tile_size + puz.tile_spacing;
 		puz.transition = puz.transition_vars()
 	},
@@ -202,7 +203,7 @@ var puz = {
 	},
 	
 	start_game:function() {
-		puz.reset_game()
+		puz.reset_game();
 		document.getElementById(puz.id_btn).innerHTML = "&nbsp;"
 		puz.mix_board(puz.go);
 	},
@@ -236,10 +237,15 @@ var puz = {
 			h += '<a href="#shift" id="' + puz.id_tile + i + '" \
 					style="top:'+ top_pos +'px;\
 					left:'+left_pos+'px;\
-					background-position: -'+left_pos+'px -'+top_pos+'px\
-					" ' + puz.slide_event + '="return puz.slide_click(this);"><span>'+i+'</span></a>';
+					background-position: -'+left_pos+'px -'+top_pos+'px"><span>'+i+'</span></a>';
 		}	
 		puz.board_el.innerHTML = h;
+	},
+
+	add_tileslide_event: function() {
+		puz.board_wrapper_el.addEventListener('click', function(e){
+			return puz.slide_click(e.srcElement);
+		})
 	},
 
 	build_board_map: function() {
