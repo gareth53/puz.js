@@ -8,22 +8,22 @@
 TODO
 - BASE STYLES
 - WRITE STYLES IN WITHOUT <STYLE> TAG
-- mix board without transitions option
-- option to start with a mixed board
 - DOCSTRINGS
 - REMOVE DEBUG
 - write tests
-- make into a contructor
+- MAKE INTO A CONTRUCTOR
 - configurating when instantiating
-	- id
+	- ID
 	- start mixed
-	- image
-	- image size
-	- tile size
-	- tile spacing
-	- board_width
-	- board_height
+	- IMAGE
+	- IMAGE SIZE
+	- TILE SIZE
+	- TILE SPACING
+	- BOARD_WIDTH
+	- BOARD_HEIGHT
 	- slide speed
+- mix board without transitions option
+- option to start with a mixed board
 - USE DYNAMIC ELEMENT IDS?
 - test transitions in MSIE
 - test x-browser
@@ -44,9 +44,8 @@ var Puz = function (id, config) {
 	this.tile_spacing = 4;
 	this.slide_delay = 100;
 /* CSS specifics */
-	this.image  ="";
-	this.background_image = "egg-money-quiz.png";
-	this.background_size = "";
+	this.image = "egg-money-quiz.png";
+	this.image_size = "";
 /* in game vars */
 	this.slide_event = 'onclick';
 	this.board_el = undefined;
@@ -72,10 +71,7 @@ var Puz = function (id, config) {
 };
 
 Puz.prototype = {
-	debug: function () {
-		console.log(this);
-	},
-
+	
 	init: function () {
 		var body;
 		if (document.ontouchstart) this.slide_event = "ontouchstart";
@@ -142,13 +138,13 @@ Puz.prototype = {
 					'display': 'block',
 					'width': this.tile_size + 'px',
 					'height': this.tile_size + 'px',
-					'background-image': 'url(' + this.background_image + ')',
+					'background-image': 'url(' + this.image + ')',
 					'background-repeat': 'no-repeat',
-					'background-size': this.background_size,
+					'background-size': this.image_size,
 					'text-decoration': 'none',
 				},
 				selector3 : {
-					'display': 'none'
+					//'display': 'none'
 				}
 			},
 			css = "",
@@ -189,16 +185,15 @@ Puz.prototype = {
 		this.mix_board(this.go);
 	},
 
-	go: function (obj) {
+	go: function (that) {
 		/*
 		function that is fred by the callback once the board has been mixed
 		*/
-		// TODO - figure out how to get the object in scope!
-		document.getElementById(obj.id_btn).innerHTML = obj.btn_reset;
-		obj.start_time = new Date();
-		obj.game_in_progress = true;
-		obj.board_active = true;
-		obj.time_disp();
+		document.getElementById(that.id_btn).innerHTML = that.btn_reset;
+		that.start_time = new Date();
+		that.game_in_progress = true;
+		that.board_active = true;
+		that.time_disp();
 	},
 
 	build_board: function () {
@@ -252,8 +247,10 @@ Puz.prototype = {
 		*/
 		var that = this,
 			moves = 0,
-			total_time = 0,//(this.board_w * this.board_h * 4 * this.slide_delay),
+			moves_to_mix = (this.board_w * this.board_h * 4),
+			total_time = moves_to_mix * this.slide_delay,
 			slide_delay = this.slide_delay,
+			stored_slide_delay = slide_delay,
 			rnd,
 			tiles,
 			tile_num;
@@ -262,16 +259,22 @@ Puz.prototype = {
 				do {
 					rnd = parseInt(tiles.length * Math.random());
 					tile_num = tiles.splice(rnd, 1);
-				} while (tile_num == this.last_tile_moved);
+				} while (tile_num == that.last_tile_moved);
 				var to = that.slide_invoke(document.getElementById(that.id_tile + tile_num));
 			}
-//		if (total_time > 20000) this.active_slide_delay = 1;
-		while (moves < (this.board_w * this.board_h * 4)) {
+/*		
+		if (total_time > 20000) {
+			this.slide_delay = 1;
+			slide_delay = 1;
+		}
+*/
+		while (moves < moves_to_mix) {
 			var delay = (slide_delay * moves);
 			setTimeout(slide_tile, delay);
 			moves++;
 		}
 		cback = setTimeout(function() {
+				that.slide_delay = stored_slide_delay;
 				callback(that);
 			}, delay + 1000);
 	},
@@ -345,7 +348,7 @@ Puz.prototype = {
 			y_st = parseInt(el.style.top);
 		if (this.transition) {
 			var transitionEnd = function () {
-				// cancel the transition stuff & then call this.slide()
+				// cancel the transition stuff & then call Puz.slide()
 				el = that.last_tile_moved;
 				el.style[that.transition.property + 'Duration'] = "0";
 				el.style[that.transition.transform] = "translate3d(0, 0, 0)";
@@ -414,26 +417,28 @@ Puz.prototype = {
 		/*
 		formats a value in milliseconds into a human-readable time
 		*/
-		var hrs, rmndr, mins, secs;
-		hrs = Math.floor(ms / (1000 * 60 * 60));
+		var mins, secs,
+		pad_num = function (num) {
+				return (num < 10) ? '0' + num : num;
+		},
+		hrs = Math.floor(ms / (1000 * 60 * 60)),
 	 	rmndr = ms - (1000 * 60 * 60 * hrs);
-		mins = Math.floor(rmndr / (60 * 1000))
-		rmndr = rmndr - (60 * 1000 * mins)
+		mins = Math.floor(rmndr / (60 * 1000));
+		rmndr = rmndr - (60 * 1000 * mins);
 		secs = Math.floor(rmndr/1000);
-		return hrs + ":" + this.pad_num(mins) + ":" + this.pad_num(secs);
-	},
-
-	pad_num: function (num) {
-		return (num < 10) ? '0' + num : num;
+		return hrs + ":" + pad_num(mins) + ":" + pad_num(secs);
 	},
 
 	time_disp: function () {
 		/*
 		updates the timer
 		*/
+		var that = this;
+		document.getElementById(this.id_time).innerHTML = this.time_format(this.time_diff(this.start_time, new Date()))
 		if (this.game_in_progress) {
-			document.getElementById(this.id_time).innerHTML = this.time_format(this.time_diff(this.start_time, new Date()))
-			this.clock = setTimeout(this.time_disp, 49);
+			this.clock = setTimeout(function() {
+				that.time_disp()
+			}, 499);
 		}
 	},
 
@@ -450,7 +455,7 @@ Puz.prototype = {
 
 	transition_vars: function () {
 		/*
-		'sniffer' script that determins what transition definers the browser supports
+		'sniffer' script that determines what transition definers the browser supports
 		returns 'false' if the browser doesn't support transitions
 		*/
 		var el = document.createElement('div'),
@@ -480,8 +485,12 @@ var demo_puzzle;
 
 window.addEventListener('load', function () {
 	demo_puzzle = new Puz('demo_puzzle', {
-		'background_image': 'egyptian_hall.jpg',
-		'background_size': '400px 400px'
+//		'image': '2.jpg',
+		'image_size': '600px 900px',
+		'tile_size': 60,
+		'tile_spacing': 2,
+		'board_w': 9,
+		'board_h': 9,
 	});
 	demo_puzzle.init();
 });
@@ -494,7 +503,7 @@ window.addEventListener('load', function () {
 <style>
 #demo_puzzle {
 	font:14px arial,helvetica,sans-serif;
-	width:374px;
+	float:left;
 	padding:10px;
 	margin:0 auto;
 	background:#9cf;
