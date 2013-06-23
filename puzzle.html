@@ -217,6 +217,9 @@ Puz.prototype = {
 					background-position: -'+left_pos+'px -'+top_pos+'px"><span>'+i+'</span></a>';
 		}
 		this.board_el.innerHTML = h;
+		// fix the size of the board, in case 'hiding' the button alters that
+		var w = this.board_wrapper_el.offsetWidth;
+		this.board_wrapper_el.style.width = w + 'px';
 	},
 	
 	add_tileslide_event: function () {
@@ -229,7 +232,6 @@ Puz.prototype = {
 	build_board_map: function () {
 		/*
 		builds a programmatical map of the board
-		
 		*/
 		this.board = [];
 		for (var i=0;i<this.board_h;i++) {
@@ -500,8 +502,8 @@ window.addEventListener('load', function () {
 		'image_size': '600px 900px',
 		'tile_size': 60,
 		'tile_spacing': 2,
-		'board_w': 3,
-		'board_h': 12,
+		'board_w': 4,
+		'board_h': 4,
 	});
 	demo_puzzle.init();
 });
