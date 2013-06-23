@@ -42,7 +42,7 @@ var Puz = function (id, config) {
 	this.board_h = 4;
 	this.tile_size = 90;
 	this.tile_spacing = 4;
-	this.slide_delay = 100;
+	this.slide_delay = 500;
 /* CSS specifics */
 	this.image = "egg-money-quiz.png";
 	this.image_size = "";
@@ -60,8 +60,7 @@ var Puz = function (id, config) {
 	this.last_tile_moved = 0;
 	this.btn_start = '<a href="#start" onclick="demo_puzzle.start_game(); return false;">Start Game</a>';
 	this.btn_reset = '<a href="#reset" onclick="demo_puzzle.init(); return false;">Reset</a>';
-	// WHAT DO WE DO IF THERE'S NO ID?
-	this.board_wrapper_id = id;
+	this.board_wrapper_id = (id) ? id : "puz_" + new Date().getTime();
 	if (config) {
 		for (setting in config) {
 			this[setting] = config[setting];
@@ -111,11 +110,12 @@ Puz.prototype = {
 		/*
 		DOM element IDs
 		*/
-		this.id_btn    = this.board_wrapper_id + "_btn";
-		this.id_time   = this.board_wrapper_id + "_time";
-		this.id_moves  = this.board_wrapper_id + "_moves";
-		this.id_puzzle = this.board_wrapper_id + "_puzzle";
-		this.id_tile   = this.board_wrapper_id + "_tile";
+		var b = this.board_wrapper_id;
+		this.id_btn    = b + "_btn";
+		this.id_time   = b + "_time";
+		this.id_moves  = b + "_moves";
+		this.id_puzzle = b + "_puzzle";
+		this.id_tile   = b + "_tile";
 	},
 
 	generate_styles: function () {
@@ -227,6 +227,7 @@ Puz.prototype = {
 	build_board_map: function () {
 		/*
 		builds a programmatical map of the board
+		
 		*/
 		this.board = [];
 		for (var i=0;i<this.board_h;i++) {
@@ -262,12 +263,9 @@ Puz.prototype = {
 				} while (tile_num == that.last_tile_moved);
 				var to = that.slide_invoke(document.getElementById(that.id_tile + tile_num));
 			}
-/*		
-		if (total_time > 20000) {
-			this.slide_delay = 1;
-			slide_delay = 1;
-		}
-*/
+// TODO - allow the skipping of the animation (boring!)
+// TODO - do animation faster if it's going to take too long?
+
 		while (moves < moves_to_mix) {
 			var delay = (slide_delay * moves);
 			setTimeout(slide_tile, delay);
@@ -460,13 +458,14 @@ Puz.prototype = {
 		*/
 		var el = document.createElement('div'),
 			poss = [
-			["transition", 'transition', 'transitionend', "transform" ],
 			["WebkitTransition", '-webkit-transition', 'webkitTransitionEnd', "webkitTransform"],
 			["MSTransition", '-ms-transition', 'MSTransitionEnd', "MSTransform" ],
 			["MozTransition", '-moz-transition', 'transitionend', "MozTransform" ],
+			["transition", 'transition', 'transitionend', "transform"],
 			["OTransition", '-o-transition', 'OTransitionEnd', "OTransform" ]
 		];
 		for (var p in poss) {
+			// TODO: fixme, this is an inadequate test... need to test ALL the properties
 			if (poss[p][0] in el.style) {
 				return {
 					'property': poss[p][0],
