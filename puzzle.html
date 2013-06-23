@@ -42,7 +42,7 @@ var Puz = function (id, config) {
 	this.board_h = 4;
 	this.tile_size = 90;
 	this.tile_spacing = 4;
-	this.slide_delay = 500;
+	this.slide_delay = 200;
 /* CSS specifics */
 	this.image = "egg-money-quiz.png";
 	this.image_size = "";
@@ -144,7 +144,7 @@ Puz.prototype = {
 					'text-decoration': 'none',
 				},
 				selector3 : {
-					//'display': 'none'
+					'display': 'none'
 				}
 			},
 			css = "",
@@ -187,7 +187,7 @@ Puz.prototype = {
 
 	go: function (that) {
 		/*
-		function that is fred by the callback once the board has been mixed
+		function that is fired by the callback once the board has been mixed
 		*/
 		document.getElementById(that.id_btn).innerHTML = that.btn_reset;
 		that.start_time = new Date();
@@ -218,12 +218,14 @@ Puz.prototype = {
 		}
 		this.board_el.innerHTML = h;
 	},
+	
 	add_tileslide_event: function () {
 		that = this;
 		this.board_wrapper_el.addEventListener('click', function (e){
 			return that.slide_click(e.srcElement);
 		})
 	},
+	
 	build_board_map: function () {
 		/*
 		builds a programmatical map of the board
@@ -265,7 +267,12 @@ Puz.prototype = {
 			}
 // TODO - allow the skipping of the animation (boring!)
 // TODO - do animation faster if it's going to take too long?
-
+/*		
+		if (total_time > 20000) {
+			this.slide_delay = 1;
+			slide_delay = 1;
+		}
+*/
 		while (moves < moves_to_mix) {
 			var delay = (slide_delay * moves);
 			setTimeout(slide_tile, delay);
@@ -301,9 +308,10 @@ Puz.prototype = {
 		}
 		return false;
 	},
+	
 	find_tile: function (id) {
 		/*
-		function that searchs the board map adn returns x and y coordinates
+		function that searchs the board map and returns x and y coordinates
 		*/
 		var x, y, row, col;
 		for (row in this.board) {
@@ -315,6 +323,7 @@ Puz.prototype = {
 			}
 		}
 	},
+	
 	slide_invoke:function (el) {
 		/*
 		checks whether any given slide can be moved
@@ -363,6 +372,7 @@ Puz.prototype = {
 			that.slide(el, x_st, y_st, x_dir, y_dir);
 		}
 	},
+	
 	slide: function (el, x_st, y_st, x_dir, y_dir) {
 		/*
 		moves a tile element in the specified direction from a specified starting point
@@ -391,6 +401,7 @@ Puz.prototype = {
 			else this.game_complete();
 		}
 	},
+	
 	check_game_complete: function () {
 		/*
 		check the board map to see if the puzzle has been solved
@@ -411,6 +422,7 @@ Puz.prototype = {
 		*/
 		return end.getTime() - start.getTime();
 	},
+	
 	time_format: function (ms) {
 		/*
 		formats a value in milliseconds into a human-readable time
@@ -488,8 +500,8 @@ window.addEventListener('load', function () {
 		'image_size': '600px 900px',
 		'tile_size': 60,
 		'tile_spacing': 2,
-		'board_w': 9,
-		'board_h': 9,
+		'board_w': 3,
+		'board_h': 12,
 	});
 	demo_puzzle.init();
 });
