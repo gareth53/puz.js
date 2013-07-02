@@ -292,9 +292,13 @@ Puz.prototype = {
         var tiles = [],
             x = this.space[0],
             y = this.space[1];
+            // tile to the left of the space
             if (x > 0) tiles.push(this.board[y][x - 1]);
+            // tile to the right
             if (x < this.board_w-1) tiles.push(this.board[y][x + 1]);
+            // tile above
             if (y > 0) tiles.push(this.board[y - 1][x]);
+            // tile below
             if (y < this.board_h-1) tiles.push(this.board[y + 1][x]);
             return tiles;
     },
@@ -327,7 +331,7 @@ Puz.prototype = {
     
     slide_invoke:function (el) {
         /*
-        checks whether any given slide can be moved
+        checks whether any given slide can be moved, then instigates the move
         */
         var curr = el.id;
         var curr_num = parseInt(curr.replace(this.id_tile,''));
